@@ -1,0 +1,6 @@
+[submodule "necpp"]
+	path = necpp
+	url = https://github.com/hmatuschek/necpp.git
+[submodule "bnflite"]
+	path = bnflite
+	url = https://github.com/r35382/bnflite.git
