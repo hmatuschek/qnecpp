@@ -4,8 +4,7 @@
 #include "api.h"
 #include "optimize.h"
 
-
-double fitness(Eigen::Ref<const Eigen::VectorXd> param) {
+Model assembleModel(Eigen::Ref<const Eigen::VectorXd> param) {
   double Ri = 1.2e-3/2; // 1.0mm²
   double Ra = 2.3e-3/2;
   double l1=param(0), l2=param(1), l3=param(2), l4=param(3), l5=param(4), l6=param(5), l7=param(6),
@@ -45,14 +44,13 @@ double fitness(Eigen::Ref<const Eigen::VectorXd> param) {
   model.addFrequency({50.1, 28.1, 24.9, 21.1, 18.1, 14.1, 10.12, 7.1});
 
   model.setMeasurement(ImpedanceMeasurement());
-  std::list<Result> result = model.run();
-  std::cout << "At p=" << param.transpose() << std::endl;
-  for (std::list<Result>::iterator r=result.begin(); r!=result.end(); r++) {
-    std::cout << "@ F=" << r->frequency() << "MHz => Z=" << r->impedance() << ", |Z|=" << std::abs(r->impedance())
-              << " => VSWR@" << 64*50 << "=" << r->vswr(64*50)
-              << " => VSWR@" << 50 << "=" << r->vswr(50) << std::endl;
-  }
 
+  return model;
+}
+
+double fitness(Eigen::Ref<const Eigen::VectorXd> param) {
+  Model model = assembleModel(param);
+  std::list<Result> result = model.run();
   double totVSWR = 0;
   for (std::list<Result>::iterator r=result.begin(); r!=result.end(); r++)
     totVSWR += r->vswr(64*50);
@@ -64,7 +62,14 @@ int main(int argc, char *argv[]) {
 
   double l1=2.87, l2=1.95, l3=0.54, l4=0.74, l5=0.8, l6=1.54, l7=3.24, l8=5.40;
   Eigen::VectorXd param(8); param << l1, l2, l3, l4, l5, l6, l7, l8;
-  CMA_ES::run(param, 0.2, fitness);
+  CMA_ES::run(param, 0.1, fitness);
+
+  std::cout << "Final params: " << param.transpose() << std::endl;
+
+  Model model = assembleModel(param);
+  std::list<Result> result = model.run();
+  for (std::list<Result>::iterator r=result.begin(); r!=result.end(); r++)
+    std::cerr << "@ F=" << r->frequency() << "MHz: VSWR(3200)=" << r->vswr(3200) << std::endl;
 
   return 0;
 }

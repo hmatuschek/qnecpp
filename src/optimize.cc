@@ -2,7 +2,6 @@
 #include <eigen3/Eigen/Cholesky>
 #include <chrono>
 #include <random>
-#include <iostream>
 
 unsigned seed1 = std::chrono::system_clock::now().time_since_epoch().count();
 std::default_random_engine generator(seed1);
@@ -21,8 +20,9 @@ CMA_ES::run(Eigen::Ref<Eigen::VectorXd> m, double sig, fFitness fitness, size_t 
   int N = m.rows();
   size_t mu = (2*lam)/3;
   Eigen::VectorXd w(lam); w.setZero();
-  for (size_t i=0; i<mu; i++)
-    w(i) = mu-i+1;
+  for (size_t i=0; i<lam; i++)
+    w(i) = lam-i+1;
+  w = w/w.sum();
   Eigen::MatrixXd C = Eigen::MatrixXd::Identity(N,N);
   Eigen::VectorXd pc(N); pc.setZero();
   Eigen::VectorXd ps(N); ps.setZero();
@@ -41,35 +41,43 @@ CMA_ES::step(Eigen::Ref<Eigen::VectorXd> m, double &sig, Eigen::Ref<Eigen::Matri
   double cs = 3./N;
   double cc = 1./std::sqrt(double(N));
   double c1 = 2./(N*N);
-  double mu_eff = 1./w.squaredNorm();
+  double mu_eff = 1./w.head(mu).squaredNorm();
   double c_mu = std::min(mu_eff/N/N, 1-c1);
-  double ds = 0.9;
+  double ds = 1.1;
 
-  Eigen::LLT<Eigen::MatrixXd> LLT(C);
+  Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> VDV(C);
   Eigen::MatrixXd X(N,lam);
   Eigen::VectorXd fit(lam);
 
+  Eigen::MatrixXd V(VDV.eigenvectors());
+  Eigen::DiagonalMatrix<double, Eigen::Dynamic> D2(VDV.eigenvalues().array().sqrt().matrix());
+  Eigen::DiagonalMatrix<double, Eigen::Dynamic> Di2((1./VDV.eigenvalues().array().sqrt()).matrix());
+
+#pragma omp parallel for
   for (size_t i=0; i<lam; i++) {
-    X.col(i).noalias() = ( m + LLT.matrixL()*rand_normal(N,0,sig) );
+    X.col(i).noalias() = ( m + V*D2*rand_normal(N,0,sig) );
+    for (int j=0; j<N; j++)
+      X(j,i) = std::max(0.03, std::min(X(j,i),100.0));
     fit(i) = fitness(X.col(i));
   }
 
-  Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> perm(lam);
-  perm.setIdentity();
-  std::sort(perm.indices().data(), perm.indices().data()+perm.indices().size(),
+  Eigen::VectorXi perm(lam);
+  for (size_t i=0; i<lam;i++) perm(i)=i;
+  std::sort(perm.data(), perm.data()+perm.size(),
             [&fit](int i1, int i2) {return fit[i1] > fit[i2];});
-  Eigen::MatrixXd Xp   =  (X * perm).eval();
-  Eigen::VectorXd fitp = (perm*fit).eval();
-  std::cerr << "Fitness: " << fit.transpose() << std::endl;
-  std::cerr << "Perm: " << perm.indices().transpose() << std::endl;
-  std::cerr << "Perm. fitness: " << fitp.transpose() << std::endl;
+  Eigen::MatrixXd Xp(N,lam);
+  Eigen::VectorXd fitp(lam);
+  for (size_t i=0;i<lam;i++) {
+    Xp.col(i) = X.col(perm(i));
+    fitp(i)   = fit(perm(i));
+  }
   // update mean
   Eigen::VectorXd m2 = m;
   for (size_t i=0; i<mu; i++)
-    m = m2 + w.head(i)*(Xp.col(i)-m2);
+    m += w(i)*(Xp.col(i)-m2);
 
   // Update Ps
-  ps = (1-cs)*ps + std::sqrt(cs*(2-cs)/mu_eff)/sig*LLT.matrixL().solve(m-m2);
+  ps = (1-cs)*ps + std::sqrt(cs*(2-cs)*mu_eff)*(V*Di2*V.transpose()*(m-m2)/sig);
 
   // Update Pc
   pc = (1-cc)*pc + std::sqrt(cc*(2-cc)*mu_eff)*(m-m2)/sig;
@@ -77,7 +85,9 @@ CMA_ES::step(Eigen::Ref<Eigen::VectorXd> m, double &sig, Eigen::Ref<Eigen::Matri
   C = (1-c1-c_mu*w.sum())*C + c1*pc*pc.transpose();
   for (size_t i=0; i<lam; i++) {
     Eigen::VectorXd y = (Xp.col(i)-m2)/sig;
-    C += c_mu*y*y.transpose();
+    C += c_mu*w(i)*(y*y.transpose());
   }
-  sig = sig*std::exp(cs*(ps.norm()/(std::sqrt(double(N))+1./(4*N)+1./(21*N*N)) -1)/ds);
+
+  double pn = ps.norm()/(std::sqrt(double(N))*(1-1./(4*N)+1./(21*N*N)));
+  sig = sig*std::exp(cs*(pn-1)/ds);
 }

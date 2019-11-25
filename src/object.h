@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 #include <cinttypes>
+#include <mutex>
 
 class Object;
 
@@ -28,6 +29,7 @@ protected:
 protected:
   std::unordered_map<Object *, size_t> _objects;
   static GC *_singleton;
+  std::mutex _lock;
 };
 
 

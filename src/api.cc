@@ -36,11 +36,11 @@ Container::~Container()
 
 Container &
 Container::operator =(const Container &other) {
+  if (other._object)
+    GC::get()->ref(other._object);
   if (_object)
     GC::get()->unref(_object);
   _object = other._object;
-  if (_object)
-    GC::get()->ref(_object);
   return *this;
 }
 
@@ -326,7 +326,7 @@ ImpedanceMeasurement::operator =(const ImpedanceMeasurement &other) {
 Model::Model(const std::wstring &name)
   : Container(new ModelObj(name)), _model(static_cast<ModelObj *>(_object))
 {
-  // pass...
+  GC::get()->unref(_model);
 }
 
 Model::Model(const Model &other)

@@ -72,7 +72,8 @@ GeoElementObj::mark() {
   if (isMarked())
     return;
   Object::mark();
-  _geometry->mark();
+  if (_geometry)
+	  _geometry->mark();
 }
 
 int

@@ -18,7 +18,8 @@ ModelObj::mark() {
   if (isMarked())
     return;
   Object::mark();
-  _geometry->mark();
+  if (_geometry)
+	  _geometry->mark();
   if (_ground)
     _ground->mark();
   if (_excitation)
@@ -58,7 +59,7 @@ ModelObj::run() {
   ctx.initialize();
 
   _geometry->constructGeometry(ctx);
-  std::cerr << "Completed geometry." << std::endl;
+  //std::cerr << "Completed geometry." << std::endl;
 
   ctx.geometry_complete(1);
 
