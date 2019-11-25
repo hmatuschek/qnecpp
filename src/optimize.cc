@@ -1,5 +1,4 @@
 #include "optimize.h"
-#include <eigen3/Eigen/Cholesky>
 #include <chrono>
 #include <random>
 
@@ -53,7 +52,7 @@ CMA_ES::step(Eigen::Ref<Eigen::VectorXd> m, double &sig, Eigen::Ref<Eigen::Matri
   Eigen::DiagonalMatrix<double, Eigen::Dynamic> D2(VDV.eigenvalues().array().sqrt().matrix());
   Eigen::DiagonalMatrix<double, Eigen::Dynamic> Di2((1./VDV.eigenvalues().array().sqrt()).matrix());
 
-//#pragma omp parallel for
+#pragma omp parallel for
   for (size_t i=0; i<lam; i++) {
     X.col(i).noalias() = ( m + V*D2*rand_normal(N,0,sig) );
     for (int j=0; j<N; j++)
