@@ -3,8 +3,8 @@
 
 
 ModelObj::ModelObj(const std::wstring &name)
-  : Object(), _name(name), _geometry(nullptr), _ground(nullptr), _excitation(nullptr), _measurement(nullptr),
-    _frequencies()
+  : Object(), _name(name), _geometry(nullptr), _ground(nullptr), _excitation(nullptr),
+    _frequencies(), _measurement(nullptr)
 {
   _geometry = new GeometryObj();
 }
