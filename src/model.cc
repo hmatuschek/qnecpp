@@ -6,9 +6,11 @@ ModelObj::ModelObj(const std::wstring &name)
   : Object(), _name(name), _geometry(nullptr), _ground(nullptr), _excitation(nullptr),
     _frequencies(), _measurement(nullptr)
 {
+  GeometryObj *obj = new GeometryObj();
   _lock.lock();
-  _geometry = new GeometryObj();
+  _geometry = obj;
   _lock.unlock();
+  GC::get()->unref(obj);
 }
 
 ModelObj::~ModelObj() {
@@ -20,6 +22,7 @@ ModelObj::mark() {
   if (isMarked())
     return;
   Object::mark();
+  _lock.lock();
   if (_geometry)
 	  _geometry->mark();
   if (_ground)
@@ -28,6 +31,7 @@ ModelObj::mark() {
     _excitation->mark();
   if (_measurement)
     _measurement->mark();
+  _lock.unlock();
 }
 
 GeometryObj *
@@ -37,12 +41,16 @@ ModelObj::geometry() const {
 
 void
 ModelObj::setGround(GroundObj *ground) {
+  _lock.lock();
   _ground = ground;
+  _lock.unlock();
 }
 
 void
 ModelObj::setExcitation(ExcitationObj *excitation) {
+  _lock.lock();
   _excitation = excitation;
+  _lock.unlock();
 }
 
 void
@@ -52,7 +60,9 @@ ModelObj::addFrequency(double F_in_MHz) {
 
 void
 ModelObj::setMeasurement(MeasurementObj *measurement) {
+  _lock.lock();
   _measurement = measurement;
+  _lock.unlock();
 }
 
 std::list<ResultObj *>
