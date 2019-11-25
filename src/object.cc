@@ -69,7 +69,7 @@ GC::run() {
   // Remove & delete all unmarked objects
   for (std::list<Object *>::iterator o=unreachable.begin(); o!=unreachable.end(); o++) {
     _objects.erase(*o);
-    //delete *o;
+    delete *o;
   }
   // Unmark all remaining objects:
   for (std::unordered_map<Object *, size_t>::iterator elm=_objects.begin(); elm!=_objects.end(); elm++)
@@ -82,7 +82,7 @@ GC::run() {
  * Implementation of Object
  * ********************************************************************************************* */
 Object::Object()
-  : _marked(false)
+  : _marked(false), _lock()
 {
   // Register object with GC
   GC::get()->ref(this);

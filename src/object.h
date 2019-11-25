@@ -45,6 +45,7 @@ public:
 
 protected:
   bool _marked;
+  std::mutex _lock;
 };
 
 #endif // OBJECT_H

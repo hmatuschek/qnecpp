@@ -21,15 +21,18 @@ GeometryObj::mark() {
   if (isMarked())
     return;
   Object::mark();
+  _lock.lock();
   for (size_t i=0; i<_elements.size(); i++)
     _elements[i]->mark();
+  _lock.unlock();
 }
 
 int
 GeometryObj::id(const GeoElementObj *obj) {
   for (size_t i=0; i<_elements.size(); i++)
-    if (obj == _elements[i])
+	 if (obj == _elements[i]) {
       return i+1;
+	 }
   return -1;
 }
 
@@ -38,7 +41,9 @@ GeometryObj::add(GeoElementObj *obj) {
   for (size_t i=0; i<_elements.size(); i++)
     if (obj == _elements[i])
       return;
+  _lock.lock();
   _elements.push_back(obj);
+  _lock.unlock();
 }
 
 void
